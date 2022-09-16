@@ -42,22 +42,70 @@
 
     - name: Install guacd block
       block:
-      - name: Install guacd
+      - name: Install requirements
         apt:
-          name: guacd
+          name:
+          - build-essential 
+          - libcairo2-dev 
+          - libjpeg62-turbo-dev 
+          - libpng-dev 
+          - libtool-bin 
+          - libossp-uuid-dev 
+          - libvncserver-dev 
+          - freerdp2-dev 
+          - libssh2-1-dev 
+          - libtelnet-dev 
+          - libwebsockets-dev 
+          - libpulse-dev 
+          - libvorbis-dev 
+          - libwebp-dev 
+          - libssl-dev 
+          - libpango1.0-dev 
+          - libswscale-dev 
+          - libavcodec-dev 
+          - libavutil-dev 
+          - libavformat-dev
+
+      - name: Get guacd source code
+        shell: wget https://downloads.apache.org/guacamole/1.3.0/source/guacamole-server-1.3.0.tar.gz
+        args:
+          chdir: /tmp/
+
+      - name: Build and install guacd
+        shell: tar -xvf guacamole-server-1.3.0.tar.gz && cd guacamole-server-1.3.0 && ./configure --with-init-dir=/etc/init.d --enable-allow-freerdp-snapshots && make && make install
+        args:
+          chdir: /tmp/
+
+      - name: Create guacd conf dir
+        shell: mkdir -p /etc/guacamole && touch /etc/guacamole/guacd.conf
+      
+      - name: Create guacd.conf
+        ansible.builtin.blockinfile:
+          dest: /etc/guacamole/guacd.conf
+          block: |
+            #
+            # guacd configuration file
+            #
+
+            [daemon]
+            pid_file = /var/run/guacd.pid
+            log_level = info
+
+            [server]
+            bind_host=localhost
+            bind_port = 4822
 
       - name: Change default listening address of guacd
         lineinfile:
-          path: /etc/default/guacd
-          regexp: LISTEN_ADDRESS=.*
-          line: LISTEN_ADDRESS={{ hostvars["man"]["kypo_global_sandbox_ip"] }}
+          path: /etc/guacamole/guacd.conf
+          regexp: bind_host=.*$
+          line: bind_host={{ hostvars["man"]["kypo_global_sandbox_ip"] }}
 
-      - name: Restart guacd.service
-        systemd:
-          state: restarted
-          daemon_reload: yes
-          name: guacd
-      when: not guacd_status.stat.exists
+      - name: Update installed library cache
+        shell: ldconfig && systemctl daemon-reload
+
+      - name: Start guacd.service
+        shell: systemctl start guacd && systemctl enable guacd
 
 - name: NAT on MAN node
   hosts: man
@@ -356,44 +404,3 @@
       - name: reboot machine
         win_reboot:
         when: win_hostname_return_value.reboot_required
-
-- name: Prepare docker enabled machines
-  hosts:
-    - docker_hosts
-  become: yes
-
-  roles:
-    - role: kypo-user-access
-      kypo_user_access_username: kypo-user
-      kypo_user_access_ssh_public_key_options: 'restrict,port-forwarding,command="/usr/sbin/nologin"'
-
-  tasks:
-    - name: Install required system packages for Docker
-      apt:
-        name: gnupg-agent
-        state: latest
-        update_cache: yes
-
-    - name: Install docker-compose
-      include_role:
-        name: docker-compose
-
-    - name: Add administrator to docker group
-      user:
-        name: "{{ ansible_user }}"
-        groups: docker
-        append: yes
-
-    - name: Copy user public key to remote machine
-      copy:
-        src: "{{ kypo_global_ssh_public_user_key }}"
-        dest: "/home/kypo-user/.ssh/user_rsa.pub"
-
-    - name: Copy docker container directory to remote machine
-      copy:
-        src: "{{ containers_path }}"
-        dest: "/home/kypo-user/containers"
-
-    - name: Build docker containers
-      community.docker.docker_compose:
-        project_src: "/home/kypo-user/containers/"

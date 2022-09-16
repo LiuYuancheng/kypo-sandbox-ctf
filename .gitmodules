@@ -1,0 +1,24 @@
+[submodule "provisioning/roles/kypo-common"]
+	path = provisioning/roles/kypo-common
+	url = ../kypo-common.git
+[submodule "provisioning/roles/kypo-user-access"]
+	path = provisioning/roles/kypo-user-access
+	url = ../kypo-user-access.git
+[submodule "provisioning/roles/kypo-interface"]
+	path = provisioning/roles/kypo-interface
+	url = ../kypo-interface.git
+[submodule "provisioning/roles/kypo-man-logging-forward"]
+	path = provisioning/roles/kypo-man-logging-forward
+	url = ../kypo-man-logging-forward
+[submodule "provisioning/roles/iptables"]
+	path = provisioning/roles/iptables
+	url = https://gitlab.ics.muni.cz/CSIRT-MU-public/ansible-roles/iptables.git
+[submodule "provisioning/roles/kypo-user-access-windows"]
+	path = provisioning/roles/kypo-user-access-windows
+	url = https://gitlab.ics.muni.cz/muni-kypo-crp/backend-python/ansible-networking-stage/kypo-user-access-windows
+[submodule "provisioning/roles/docker-compose"]
+	path = provisioning/roles/docker-compose
+	url = https://gitlab.ics.muni.cz/muni-kypo/ansible-roles/docker-compose
+[submodule "provisioning/roles/docker"]
+	path = provisioning/roles/docker
+	url = https://gitlab.ics.muni.cz/CSIRT-MU-PUBLIC/ansible-roles/docker

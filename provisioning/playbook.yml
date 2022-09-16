@@ -1,0 +1,399 @@
+- name: check the connection with virtual machines through ssh protocol
+  hosts:
+      - management
+      - routers
+      - ssh_nodes
+  strategy: free
+  gather_facts: no
+
+  tasks:
+  - ping:
+    register: result
+    until: result is not failed
+    retries: 25
+    delay: 60
+
+- name: Install Chrony on MAN node
+  hosts: man
+  strategy: free
+  gather_facts: no
+  become: yes
+  become_user: root
+
+  tasks:
+    - name: Run apt update
+      apt:
+        update_cache: yes
+
+    - name: Install Chrony
+      apt:
+        name: chrony
+
+- name: Install and configure Guacamole daemon on MAN node
+  hosts: man
+  strategy: free
+  gather_facts: no
+  become: yes
+
+  tasks:
+    - name: Check if guacd exists
+      stat: path=/etc/init.d/guacd
+      register: guacd_status
+
+    - name: Install guacd block
+      block:
+      - name: Install guacd
+        apt:
+          name: guacd
+
+      - name: Change default listening address of guacd
+        lineinfile:
+          path: /etc/default/guacd
+          regexp: LISTEN_ADDRESS=.*
+          line: LISTEN_ADDRESS={{ hostvars["man"]["kypo_global_sandbox_ip"] }}
+
+      - name: Restart guacd.service
+        systemd:
+          state: restarted
+          daemon_reload: yes
+          name: guacd
+      when: not guacd_status.stat.exists
+
+- name: NAT on MAN node
+  hosts: man
+  strategy: free
+  gather_facts: yes
+  become: yes
+  become_user: root
+  roles:
+  - role: kypo-man-logging-forward
+    kmlf_destination: "{{ kypo_global_head_ip }}"
+
+  tasks:
+  - name: get interface of default gateway
+    shell: ip route list | grep ^default | head -n 1
+    changed_when: False
+    register: default_gateway
+
+  - set_fact:
+      default_gateway_interface: '{{ default_gateway.stdout | regex_search("(?<=dev )[^ ]+") }}'
+  - set_fact:
+      default_gateway_interface_ip: '{{ ansible_facts[default_gateway_interface]["ipv4"]["address"] }}'
+
+  - name: setup NAT
+    include_role:
+      name: iptables
+    vars:
+      iptables_rules:
+        - table: nat
+          chain: POSTROUTING
+          out_interface: '{{ default_gateway_interface }}'
+          jump: MASQUERADE
+
+- name: Setup DROP rules on MAN
+  hosts: man
+  strategy: free
+  gather_facts: yes
+  become: yes
+  become_user: root
+
+  tasks:
+    - set_fact:
+        private_ip_address_range: ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '224.0.0.0/4']
+    - set_fact:
+        host_interface: 'eth2'
+
+    - name: setup
+      include_role:
+        name: iptables
+      vars:
+        iptables_rules:
+          - chain: FORWARD
+            destination: '{{ item }}'
+            in_interface: '{{ host_interface }}'
+            out_interface: '{{ hostvars["man"]["default_gateway_interface"] }}'
+            jump: DROP
+      loop: '{{ private_ip_address_range }}'
+
+- name: Sandbox networking
+  hosts:
+  - management
+  - routers
+  strategy: free
+  gather_facts: yes
+  become: yes
+  become_user: root
+
+  roles:
+  - role: kypo-interface
+    kypo_interface_interfaces: '
+    {%- import "roles/kypo-common/templates/network.j2" as network with context -%}
+    {%- set variables = namespace(
+      interfaces = [],
+      routes = [],
+    ) -%}
+    {%- if interfaces is defined and interfaces -%}
+      {%- for interface in interfaces -%}
+        {%- set variables.routes = [] -%}
+        {%- if interface.routes is defined and interface.routes -%}
+          {%- for route in interface.routes -%}
+            {%- set variables.routes = variables.routes + [{
+              "gateway": route.gw,
+              "mask": route.mask,
+              "network": route.net
+            }] -%}
+          {%- endfor -%}
+        {%- endif -%}
+        {%- set variables.interfaces = variables.interfaces + [{
+          "kypo_interface_default_gateway": interface.def_gw_ip,
+          "kypo_interface_mac": interface.mac,
+          "kypo_interface_routes": variables.routes,
+          "kypo_interface_device": network.mac_to_interface(interface.mac)
+        }] -%}
+      {%- endfor -%}
+    {%- endif -%}
+    {%- set inventory_mac_addresses = interfaces | map(attribute="mac") | list -%}
+    {%- set the_rest_interfaces = network.kypo_common_network.interfaces |
+      selectattr("macaddress", "defined") |
+      rejectattr("macaddress", "in", inventory_mac_addresses) |
+      selectattr("type", "eq", "ether") | list
+    -%}
+    {%- for interface in the_rest_interfaces -%}
+      {%- set variables.interfaces = variables.interfaces + [{
+        "kypo_interface_mac": interface.macaddress,
+        "kypo_interface_device": interface.device
+      }] -%}
+    {%- endfor -%}
+    {{ variables.interfaces }}'
+
+  tasks:
+  - name: set ip forward
+    sysctl:
+      name: net.ipv4.ip_forward
+      value: '{% if ip_forward %}1{% else %}0{% endif %}'
+    when: ip_forward is defined
+
+- name: Test sandbox networking
+  hosts:
+  - management
+  - routers
+  - ssh_nodes
+  strategy: free
+  become: yes
+  become_user: root
+
+  tasks:
+  - command: 'ping -c 3 {{ hostvars["man"]["default_gateway_interface_ip"] }}'
+    changed_when: False
+    register: ping_result
+    until: ping_result is not failed
+    retries: 18
+    delay: 10
+
+- name: User access on MAN and UAN
+  hosts:
+  - man
+  - uan
+  strategy: free
+  gather_facts: no
+  become: yes
+  become_user: root
+
+  roles:
+    - role: kypo-user-access
+      kypo_user_access_username: user
+      kypo_user_access_ssh_public_key_options: 'restrict,port-forwarding,command="/usr/sbin/nologin"'
+
+- name: User and management access on KYPO Proxy
+  hosts:
+  - kypo-proxy-jump
+  strategy: free
+  gather_facts: no
+  become: yes
+  become_user: root
+
+  pre_tasks:
+    - name: check existence of other users from pool
+      find:
+        file_type: directory
+        paths: /home
+        patterns: '{{ user_access_mgmt_name }}*'
+      register: other_users_from_pool
+
+    - set_fact:
+        other_users_from_pool_exists: '{{ other_users_from_pool.files | map(attribute="pw_name") | reject("eq", user_access_mgmt_name) | reject("eq", user_access_user_name) | list | length > 0 }}'
+        user_access_present: '{{ user_access_present | default(True) }}'
+
+
+  roles:
+    - role: kypo-user-access
+      kypo_user_access_username: '{{ user_access_user_name }}'
+      kypo_user_access_ssh_public_key: '{{ kypo_global_ssh_public_user_key }}'
+      kypo_user_access_ssh_public_key_options: 'restrict,port-forwarding,command="/usr/sbin/nologin"'
+      when: user_access_present
+
+    - role: kypo-user-access
+      kypo_user_access_username: '{{ user_access_mgmt_name }}'
+      kypo_user_access_ssh_public_key: '{{ kypo_global_ssh_public_mgmt_key }}'
+      kypo_user_access_ssh_public_key_options: 'restrict,port-forwarding,command="/usr/sbin/nologin"'
+      when: user_access_present
+
+  tasks:
+    - name: remove sandbox user from KYPO Proxy
+      user:
+          name: '{{ user_access_user_name }}'
+          state: absent
+          remove: yes
+          force: yes
+      when: not user_access_present
+
+    - name: remove pool mgmt user from KYPO Proxy
+      user:
+          name: '{{ user_access_mgmt_name }}'
+          state: absent
+          remove: yes
+          force: yes
+      when: not user_access_present and not other_users_from_pool_exists
+
+- name: Configure user access for user accessible hosts
+  hosts: user_accessible_nodes:&ssh_nodes
+  strategy: free
+  gather_facts: false
+  become: true
+  become_user: root
+
+  roles:
+    - role: kypo-user-access
+      kypo_user_access_username: user
+      kypo_user_access_password: Password123
+
+- name: check the connection with virtual machines through winrm protocol
+  hosts: winrm_nodes
+#  strategy: free
+  gather_facts: no
+
+  tasks:
+  - name: Wait 800 seconds for target connection to become reachable/usable
+    wait_for_connection:
+      connect_timeout: 10
+      timeout: 800
+
+  - name: test sandbox networking
+    win_command: 'ping {{ hostvars["man"]["default_gateway_interface_ip"] }}'
+
+  - name: enforce windows license activation
+    win_command: 'cscript C:\Windows\System32\slmgr.vbs //B /ato'
+    register: result
+    until: result is not failed
+    retries: 10
+    delay: 10
+
+  - name: ensure existence of SSH directory
+    win_file:
+      path: 'C:\Users\{{ ansible_user }}\.ssh'
+      state: directory
+
+  - name: add public key to authorized keys
+    win_copy:
+      dest: 'C:\Users\{{ ansible_user }}\.ssh\authorized_keys'
+      content: '{{ lookup("file", kypo_global_ssh_public_mgmt_key) }}'
+
+- name: Configure user access for user accessible windows hosts
+  hosts: user_accessible_nodes:&winrm_nodes
+  gather_facts: yes
+
+  roles:
+    - role: kypo-user-access-windows
+      kypo_user_access_username: user
+      kypo_user_access_password: Password123
+      kypo_user_access_admin: True
+
+- name: remove stack name prefix from hostnames of ssh nodes
+  hosts:
+      - management
+      - ssh_nodes
+  strategy: free
+  gather_facts: no
+  become: yes
+
+  tasks:
+      - name: set a new hostname
+        hostname:
+            name: '{{ inventory_hostname }}'
+
+      - name: Make cloud-init to preserve changes
+        lineinfile:
+          path: /etc/cloud/cloud.cfg
+          regexp: '^manage_etc_hosts'
+          line: 'manage_etc_hosts: localhost'
+        when: ansible_facts['os_family'] != 'FreeBSD'
+
+      - name: Make cloud-init to preserve changes
+        lineinfile:
+          path: /usr/local/etc/cloud/cloud.cfg
+          regexp: '^manage_etc_hosts'
+          line: 'manage_etc_hosts: localhost'
+        when: ansible_facts['os_family'] == 'FreeBSD'
+
+      - name: remove stack name prefix from /etc/hosts file
+        replace:
+            path: /etc/hosts
+            regexp: '{{ kypo_global_sandbox_name }}-'
+            replace: ''
+
+- name: remove stack name prefix from hostnames of winrm nodes
+  hosts:
+      - winrm_nodes
+  strategy: free
+  gather_facts: no
+
+  tasks:
+      - name: set a new hostname
+        win_hostname:
+            name: '{{ inventory_hostname }}'
+        register: win_hostname_return_value
+
+      - name: reboot machine
+        win_reboot:
+        when: win_hostname_return_value.reboot_required
+
+- name: Prepare docker enabled machines
+  hosts:
+    - docker_hosts
+  become: yes
+
+  roles:
+    - role: kypo-user-access
+      kypo_user_access_username: kypo-user
+      kypo_user_access_ssh_public_key_options: 'restrict,port-forwarding,command="/usr/sbin/nologin"'
+
+  tasks:
+    - name: Install required system packages for Docker
+      apt:
+        name: gnupg-agent
+        state: latest
+        update_cache: yes
+
+    - name: Install docker-compose
+      include_role:
+        name: docker-compose
+
+    - name: Add administrator to docker group
+      user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: yes
+
+    - name: Copy user public key to remote machine
+      copy:
+        src: "{{ kypo_global_ssh_public_user_key }}"
+        dest: "/home/kypo-user/.ssh/user_rsa.pub"
+
+    - name: Copy docker container directory to remote machine
+      copy:
+        src: "{{ containers_path }}"
+        dest: "/home/kypo-user/containers"
+
+    - name: Build docker containers
+      community.docker.docker_compose:
+        project_src: "/home/kypo-user/containers/"

@@ -18,10 +18,10 @@
       name: "{{ inventory_hostname }}"
 
 # Enable logging
-- hosts: attacker
+- hosts: transaction
   become: true
   tasks:
-    - name: Set DNS server on attacker
+    - name: Set DNS server on transaction
       lineinfile:
         path: /etc/resolv.conf
         line: "nameserver 8.8.8.8"
@@ -30,21 +30,20 @@
         url: https://archive.kali.org/archive-key.asc
         state: present
 
-- hosts: attacker
+- hosts: transaction
   become: true
   roles:
       - chrony
 
 - name: setup logging bash
   hosts:
-    - attacker
+    - transaction
     - server
-    - client
   gather_facts: yes
   become: yes
   become_user: root
   vars:
-    sandbox_name: junior-hacker-local
+    sandbox_name: junior-ctf-local
     central_syslog_ip: 78.128.251.179
   roles:
     - role: sandbox-logging-forward
@@ -56,7 +55,7 @@
 
 - name: setup logging msf
   hosts:
-    - attacker
+    - transaction
   gather_facts: yes
   become: yes
   become_user: root

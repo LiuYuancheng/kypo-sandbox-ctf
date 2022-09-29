@@ -1,7 +1,7 @@
-name: junior-hacker-sandbox
+name: junior-ctf-sandbox
 
 hosts:
-  - name: attacker
+  - name: transaction
     base_box: 
       image: kali
       mgmt_user: debian
@@ -9,12 +9,6 @@ hosts:
 
   - name: server
     base_box:
-      image: debian-10
-      mgmt_user: debian
-    flavor: csirtmu.tiny1x2
-
-  - name: client
-    base_box: 
       image: debian-10
       mgmt_user: debian
     flavor: csirtmu.tiny1x2
@@ -32,24 +26,20 @@ wan:
 
 networks:
   - name: switch
-    cidr: 10.1.26.0/24
+    cidr: 10.0.6.0/24
 
 net_mappings:
-    - host: attacker
+    - host: transaction
       network: switch
-      ip: 10.1.26.23
+      ip: 10.0.6.23
 
     - host: server
       network: switch
-      ip: 10.1.26.9
-
-    - host: client
-      network: switch
-      ip: 10.1.26.4
+      ip: 10.0.6.20
 
 router_mappings:
     - router: router
       network: switch
-      ip: 10.1.26.1
+      ip: 10.0.6.1
 
 groups: []

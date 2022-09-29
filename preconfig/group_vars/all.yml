@@ -1,8 +1,7 @@
 ---
 device_aliases:
-  10.1.26.1: router
-  10.1.26.23: attacker
-  10.1.26.4: client
-  10.1.26.9: server
+  10.0.6.1: router
+  10.0.6.23: transaction
+  10.0.6.20: server
   100.100.100.1: router
 ...

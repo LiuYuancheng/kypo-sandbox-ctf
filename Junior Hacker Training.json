@@ -1,5 +1,5 @@
 {
-  "title" : "Junior Hacker Training",
+  "title" : "Junior ctf Training",
   "description" : "Introductory training",
   "prerequisites" : [ ],
   "outcomes" : [ "You will learn how to scan a server, how to find out possible vulnerabilities and how to exploit them." ],
@@ -10,7 +10,7 @@
     "level_type" : "INFO_LEVEL",
     "order" : 0,
     "estimated_duration" : 0,
-    "content" : "# General information: please read carefully\n\n* The solution of a level **will be required** in the further levels. Do not try to skip ahead. If you reveal a solution to the level, complete all the steps, you will need them later.\n* If you get stuck during the game, feel free to use Google.\n* This game is for educational purposes only. Unauthorized use of the tools that are incorporated into the game is illegal. The story is fictitious.\n\n# Storyline intro\n\nWelcome! You are a junior hacker, who only recently entered the top-secret school of a legendary master hacker, preceded by incredible legends. Today is your first day of field training, and the master will take you to one of his favorite workplaces -- a crowded urban settlement. What makes such a common place really special? A lot of people without the knowledge of information security basics, with dozens of unsecured routers and default passwords, which invite you to visit their local networks. \n\nYou are in a car at the urban settlement parking lot. The master brought his laptop with Kali Linux that, together with his advice, you can use in today's outdoor training. The main goal of today's training is simple: to steal anything that can be valuable."
+    "content" : "# General information: please read carefully\n\n* The solution of a level **will be required** in the further levels. Do not try to skip ahead. If you reveal a solution to the level, complete all the steps, you will need them later.\n* If you get stuck during the game, feel free to use Google.\n* This game is for educational purposes only. Unauthorized use of the tools that are incorporated into the game is illegal. The story is fictitious.\n\n# Storyline intro\n\nWelcome! You are a junior ctf, who only recently entered the top-secret school of a legendary master ctf, preceded by incredible legends. Today is your first day of field training, and the master will take you to one of his favorite workplaces -- a crowded urban settlement. What makes such a common place really special? A lot of people without the knowledge of information security basics, with dozens of unsecured routers and default passwords, which invite you to visit their local networks. \n\nYou are in a car at the urban settlement parking lot. The master brought his laptop with Kali Linux that, together with his advice, you can use in today's outdoor training. The main goal of today's training is simple: to steal anything that can be valuable."
   }, {
     "title" : "Getting to know the environment",
     "level_type" : "TRAINING_LEVEL",
@@ -38,8 +38,8 @@
     "estimated_duration" : 5,
     "answer" : "2049",
     "answer_variable_name" : null,
-    "content" : "You already managed to guess the password on a Wi-Fi router with the master's help (12345678, really?!), so you have already accessed the local network of one household. At the same time, you saw the other machines' IP addresses in the router's web UI. There are 2 machines with IP addresses: 10.1.26.4 and 10.1.26.9. \n\nThe master told you that your goal is to gain access to the server. Since there 2 machines in the network, scan the hosts and recognize the server's IP address. You can recognize the server by its running services.\n\nThe flag is the port number on which the file sharing service is running on the server's machine.",
-    "solution" : "```\nkali@attacker:~# nmap 10.1.26.4\n\nkali@attacker:~# nmap 10.1.26.9\n2049/tcp open  nfs\n```",
+    "content" : "You already managed to guess the password on a Wi-Fi router with the master's help (12345678, really?!), so you have already accessed the local network of one household. At the same time, you saw the other machines' IP addresses in the router's web UI. There are 2 machines with IP addresses: 10.0.6.4 and 10.0.6.20. \n\nThe master told you that your goal is to gain access to the server. Since there 2 machines in the network, scan the hosts and recognize the server's IP address. You can recognize the server by its running services.\n\nThe flag is the port number on which the file sharing service is running on the server's machine.",
+    "solution" : "```\nkali@transaction:~# nmap 10.0.6.4\n\nkali@transaction:~# nmap 10.0.6.20\n2049/tcp open  nfs\n```",
     "solution_penalized" : true,
     "hints" : [ {
       "title" : "What tool to use?",
@@ -58,27 +58,20 @@
     "reference_solution" : [ {
       "state_name" : "second_machine_scanned",
       "prereq_state" : [ ],
-      "cmd" : "nmap 10.1.26.9",
+      "cmd" : "nmap 10.0.6.20",
       "cmd_type" : "bash-command",
-      "cmd_regex" : "nmap 10.1.26.9",
+      "cmd_regex" : "nmap 10.0.6.20",
       "optional" : false
-    }, {
-      "state_name" : "first_machine_scanned",
-      "prereq_state" : [ ],
-      "cmd" : "nmap 10.1.26.4",
-      "cmd_type" : "bash-command",
-      "cmd_regex" : "nmap 10.1.26.4",
-      "optional" : false
-    } ]
+    }]
   }, {
     "title" : "Connect to the server",
     "level_type" : "TRAINING_LEVEL",
     "order" : 3,
     "estimated_duration" : 5,
-    "answer" : "ssh admin@10.1.26.9",
+    "answer" : "ssh admin@10.0.6.20",
     "answer_variable_name" : null,
     "content" : "You know the IP address of the server, it was easy, right? Now comes the more interesting part of how to use this knowledge to your advantage. Connect remotely to the server and use legitimate credentials. The master told you that the login details will most likely one of these: admin/password, admin/123456 or admin/admin. It's worth trying, isn't it?\n\nThe flag is the entire command for logging into the server. ",
-    "solution" : "```\nkali@attacker:~# ssh admin@10.1.26.9\nAre you sure you want to continue connecting (yes/no/[fingerprint])? yes\nadmin@10.1.26.9's password: admin\n```",
+    "solution" : "```\nkali@transaction:~# ssh admin@10.0.6.20\nAre you sure you want to continue connecting (yes/no/[fingerprint])? yes\nadmin@10.0.6.20's password: admin\n```",
     "solution_penalized" : true,
     "hints" : [ {
       "title" : "What is the syntax for entering the SSH command?",
@@ -102,9 +95,9 @@
     "reference_solution" : [ {
       "state_name" : "ssh_to_server",
       "prereq_state" : [ "first_machine_scanned", "second_machine_scanned" ],
-      "cmd" : "ssh admin@10.1.26.9",
+      "cmd" : "ssh admin@10.0.6.20",
       "cmd_type" : "bash-command",
-      "cmd_regex" : "ssh admin@10.1.26.9",
+      "cmd_regex" : "ssh admin@10.0.6.20",
       "optional" : false
     } ]
   }, {
@@ -114,8 +107,8 @@
     "estimated_duration" : 5,
     "answer" : "invoices2019.zip",
     "answer_variable_name" : null,
-    "content" : "You are already logged in to the server. Now is the time to find something exciting and ideally compromising, but we don't know exactly what we are looking for. However... do you still remember the list of services running on the server based on the Nmap scan? You already discovered that the server runs the NFS service. NFS protocol is used for file sharing and remote access to files over a computer network. Maybe this server is used to back up data. Try to look whether the admin's home directory stores any files. Then, copy a useful file to your attacker machine.\n\nThe flag is the name of the only ZIP file (including the extension) located in the home directory. ",
-    "solution" : "```\nkali@attacker:/home# scp admin@10.1.26.9:~/invoices2019.zip .\nadmin@10.1.26.9's password: admin\n```",
+    "content" : "You are already logged in to the server. Now is the time to find something exciting and ideally compromising, but we don't know exactly what we are looking for. However... do you still remember the list of services running on the server based on the Nmap scan? You already discovered that the server runs the NFS service. NFS protocol is used for file sharing and remote access to files over a computer network. Maybe this server is used to back up data. Try to look whether the admin's home directory stores any files. Then, copy a useful file to your transaction machine.\n\nThe flag is the name of the only ZIP file (including the extension) located in the home directory. ",
+    "solution" : "```\nkali@transaction:/home# scp admin@10.0.6.20:~/invoices2019.zip .\nadmin@10.0.6.20's password: admin\n```",
     "solution_penalized" : true,
     "hints" : [ {
       "title" : "Where to look for the files?",
@@ -139,9 +132,9 @@
     "reference_solution" : [ {
       "state_name" : "scp_zip",
       "prereq_state" : [ "ssh_to_server" ],
-      "cmd" : "scp admin@10.1.26.9:~/invoices2019.zip .",
+      "cmd" : "scp admin@10.0.6.20:~/invoices2019.zip .",
       "cmd_type" : "bash-command",
-      "cmd_regex" : "scp admin@10.1.26.9:~/invoices2019.zip .*",
+      "cmd_regex" : "scp admin@10.0.6.20:~/invoices2019.zip .*",
       "optional" : false
     } ]
   }, {
@@ -152,7 +145,7 @@
     "answer" : "IhateMyJob",
     "answer_variable_name" : null,
     "content" : "You have found out that some accounting company's files have been uploaded to this server. And you have a ZIP file with a promising name in your hands, but unfortunately, it is password-protected. The master advised you that a password cracking tool called Fcrackzip was installed on his Kali machine. Find out how you could break the password and reveal the content of the ZIP. \n\nThe flag is the password to the ZIP.",
-    "solution" : "```\nkali@attacker:~# fcrackzip -D -u -p /usr/share/wordlists/fasttrack.txt invoices2019.zip\n\nPASSWORD FOUND!!!!: pw == IhateMyJob\n\nkali@attacker:/home# unzip invoices2019.zip \n\nArchive:  invoices2019.zip\n   creating: invoices2019/\n[invoices2019.zip] invoices2019/TAX15796252.txt password: IhateMyJob\n```",
+    "solution" : "```\nkali@transaction:~# fcrackzip -D -u -p /usr/share/wordlists/fasttrack.txt invoices2019.zip\n\nPASSWORD FOUND!!!!: pw == IhateMyJob\n\nkali@transaction:/home# unzip invoices2019.zip \n\nArchive:  invoices2019.zip\n   creating: invoices2019/\n[invoices2019.zip] invoices2019/TAX15796252.txt password: IhateMyJob\n```",
     "solution_penalized" : true,
     "hints" : [ {
       "title" : "Where is the wordlist stored?",
@@ -161,7 +154,7 @@
       "order" : 1
     }, {
       "title" : "How to use the Fcrackzip tool?",
-      "content" : "You can perform a dictionary attack by using `-D` option of the `fcrackzip` command, but be aware that you have to use a wordlist. One is stored somewhere at your attacker machine. ",
+      "content" : "You can perform a dictionary attack by using `-D` option of the `fcrackzip` command, but be aware that you have to use a wordlist. One is stored somewhere at your transaction machine. ",
       "hint_penalty" : 4,
       "order" : 0
     } ],

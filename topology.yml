@@ -1,0 +1,55 @@
+name: junior-hacker-sandbox
+
+hosts:
+  - name: attacker
+    base_box: 
+      image: kali
+      mgmt_user: debian
+    flavor: csirtmu.tiny1x2
+
+  - name: server
+    base_box:
+      image: debian-10
+      mgmt_user: debian
+    flavor: csirtmu.tiny1x2
+
+  - name: client
+    base_box: 
+      image: debian-10
+      mgmt_user: debian
+    flavor: csirtmu.tiny1x2
+
+routers:
+  - name: router
+    base_box:
+      image: debian-10
+      mgmt_user: debian
+    flavor: csirtmu.tiny1x2
+
+wan:
+  name: internet-connection
+  cidr: 100.100.100.0/24
+
+networks:
+  - name: switch
+    cidr: 10.1.26.0/24
+
+net_mappings:
+    - host: attacker
+      network: switch
+      ip: 10.1.26.23
+
+    - host: server
+      network: switch
+      ip: 10.1.26.9
+
+    - host: client
+      network: switch
+      ip: 10.1.26.4
+
+router_mappings:
+    - router: router
+      network: switch
+      ip: 10.1.26.1
+
+groups: []

@@ -1,0 +1,10 @@
+- name: Adding aliases
+  loop: "{{ aliases | dict2items }}"
+  lineinfile:
+      path: /etc/hosts
+      line: "{{ item.value }} {{ item.key }}"
+
+- name: Add the user 'juraj' with a bash shell to the user's groups
+  user:
+      name: juraj
+      shell: /bin/bash

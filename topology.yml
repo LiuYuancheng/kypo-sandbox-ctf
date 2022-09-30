@@ -9,9 +9,9 @@ hosts:
 
   - name: server
     base_box:
-      image: debian-10
-      mgmt_user: debian
-    flavor: csirtmu.tiny1x2
+      image: cissredchxx
+      mgmt_user: ubuntu
+    flavor: m1.small
 
 routers:
   - name: router

@@ -22,6 +22,9 @@
     -  wfuzz 
     -  rockyou.txt.gz 
 
+- name: Install net-tools
+  apt:
+    name: net-tools
 
 - name: Copy file fcrackzip with owner and permissions 
   copy:
